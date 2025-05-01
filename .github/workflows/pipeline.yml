@@ -51,13 +51,13 @@ jobs:
         if: ${{ github.event_name == 'push' && steps.skip_check.outputs.skip == 'false' }}
         run: curl https://api.render.com/deploy/srv-${{ secrets.RENDER_SERVICE_ID }}?key=${{ secrets.RENDER_API_KEY }}
 
-      - name: Discord notification for successful deployment
-        uses: rjstone/discord-webhook-notify@v1.0.4
-        if: success()
-        with: 
-          severity: info
-          details: test succeeded!
-          webhookUrl: ${{ secrets.DISCORD_WEBHOOK }}
+      - name: Send manual Discord notification
+        if: ${{ success() }}
+        run: |
+          curl -H "Content-Type: application/json" \
+            -X POST \
+            -d "{\"content\": \"✅ **A new version of Pokedex deployed** to [Production](https://full-stack-open-pokedex-40ps.onrender.com) by **${{ github.actor }}**\"}" \
+            ${{ secrets.DISCORD_WEBHOOK }}
           
   tag_release:
     needs: [simple_deployment_pipeline]
