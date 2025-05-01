@@ -2,8 +2,8 @@ name: Health Check
 
 on:
   schedule:
-    - cron: '0 * * * *' 
-  workflow_dispatch:      
+    - cron: '0 * * * *' # Runs every hour
+  workflow_dispatch:
 
 jobs:
   check_url:
@@ -15,4 +15,4 @@ jobs:
           url: https://full-stack-open-pokedex-40ps.onrender.com
           follow-redirect: true
           max-attempts: 3
-          retry-delay: 10
+          retry-delay: 10s     
