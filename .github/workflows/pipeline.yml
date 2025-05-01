@@ -42,23 +42,31 @@ jobs:
           COMMIT_MESSAGE=$(git log -1 --pretty=%B)
           echo "Commit message: $COMMIT_MESSAGE"
           if echo "$COMMIT_MESSAGE" | grep -iq "#skip"; then
-            echo "skip=true" >> $GITHUB_OUTPUT
+            echo "skip=true" >> "$GITHUB_OUTPUT"
           else
-            echo "skip=false" >> $GITHUB_OUTPUT
+            echo "skip=false" >> "$GITHUB_OUTPUT"
           fi
 
       - name: Trigger deployment
         if: ${{ github.event_name == 'push' && steps.skip_check.outputs.skip == 'false' }}
         run: curl https://api.render.com/deploy/srv-${{ secrets.RENDER_SERVICE_ID }}?key=${{ secrets.RENDER_API_KEY }}
 
-      - name: Send manual Discord notification
+      - name: Send Discord notification on success
         if: ${{ success() }}
         run: |
           curl -H "Content-Type: application/json" \
             -X POST \
             -d "{\"content\": \"✅ **A new version of Pokedex deployed** to [Production](https://full-stack-open-pokedex-40ps.onrender.com) by **${{ github.actor }}**\"}" \
             ${{ secrets.DISCORD_WEBHOOK }}
-          
+
+      - name: Send Discord notification on failure
+        if: ${{ failure() }}
+        run: |
+          curl -H "Content-Type: application/json" \
+            -X POST \
+            -d "{\"content\": \"❌ **Build failed**\nCommit [${{ github.sha }}](${{ github.server_url }}/${{ github.repository }}/commit/${{ github.sha }}) by **${{ github.actor }}** broke the build 😢\"}" \
+            ${{ secrets.DISCORD_WEBHOOK }}
+
   tag_release:
     needs: [simple_deployment_pipeline]
     runs-on: ubuntu-latest
@@ -72,9 +80,9 @@ jobs:
           COMMIT_MESSAGE=$(git log -1 --pretty=%B)
           echo "Commit message: $COMMIT_MESSAGE"
           if echo "$COMMIT_MESSAGE" | grep -iq "#skip"; then
-            echo "skip=true" >> $GITHUB_OUTPUT
+            echo "skip=true" >> "$GITHUB_OUTPUT"
           else
-            echo "skip=false" >> $GITHUB_OUTPUT
+            echo "skip=false" >> "$GITHUB_OUTPUT"
           fi
 
       - name: Bump version and push tag
