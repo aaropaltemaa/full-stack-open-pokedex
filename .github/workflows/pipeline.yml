@@ -13,19 +13,20 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+
       - uses: actions/setup-node@v4
         with:
           node-version: '20'
 
       - name: npm install
         run: npm install
-        
+
       - name: lint
         run: npm run eslint
-        
+
       - name: build
         run: npm run build
-        
+
       - name: test
         run: npm test
 
@@ -35,19 +36,41 @@ jobs:
       - name: e2e tests
         run: npm run test:e2e
 
+      - name: Check for #skip in commit message
+        id: skip_check
+        run: |
+          COMMIT_MESSAGE=$(git log -1 --pretty=%B)
+          echo "Commit message: $COMMIT_MESSAGE"
+          if echo "$COMMIT_MESSAGE" | grep -iq "#skip"; then
+            echo "skip=true" >> $GITHUB_OUTPUT
+          else
+            echo "skip=false" >> $GITHUB_OUTPUT
+          fi
+
       - name: Trigger deployment
-        if: ${{ github.event_name == 'push' }}
+        if: ${{ github.event_name == 'push' && steps.skip_check.outputs.skip == 'false' }}
         run: curl https://api.render.com/deploy/srv-${{ secrets.RENDER_SERVICE_ID }}?key=${{ secrets.RENDER_API_KEY }}
 
   tag_release:
     needs: [simple_deployment_pipeline]
     runs-on: ubuntu-latest
+    if: ${{ github.event_name == 'push' }}
     steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
-        
+      - uses: actions/checkout@v4
+
+      - name: Get latest commit message
+        id: tag_skip_check
+        run: |
+          COMMIT_MESSAGE=$(git log -1 --pretty=%B)
+          echo "Commit message: $COMMIT_MESSAGE"
+          if echo "$COMMIT_MESSAGE" | grep -iq "#skip"; then
+            echo "skip=true" >> $GITHUB_OUTPUT
+          else
+            echo "skip=false" >> $GITHUB_OUTPUT
+          fi
+
       - name: Bump version and push tag
-        if: ${{ github.event_name == 'push' }}
+        if: ${{ steps.tag_skip_check.outputs.skip == 'false' }}
         uses: anothrNick/github-tag-action@1.71.0
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
